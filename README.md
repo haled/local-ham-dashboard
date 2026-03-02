@@ -36,13 +36,13 @@ The application is configured via a `config.yaml` file in the project root. You 
 
 ```yaml
 # Identity & Contact
-callsign: "KF0AWH"
+callsign: "YOUR_CALLSIGN"
 user_agent: "TerminalHamClock/0.1.0 (your-email@example.com)"
 
 # Location Information
-latitude: 38.7714
-longitude: -90.3709
-grid_square: "EM48ps"
+latitude: 0.0
+longitude: 0.0
+grid_square: "AA00aa"
 
 # News Ticker (RSS Feeds)
 news_rss_feeds:
