@@ -1,0 +1,27 @@
+# Terminal HamClock Configuration Example
+
+# Identity & Contact
+# NWS API requires a unique User-Agent (typically includes an email)
+callsign: "YOUR_CALLSIGN"
+user_agent: "TerminalHamClock/0.1.0 (your-email@example.com)"
+
+# Location Information
+# Grid square can be used as an alternative to Lat/Long in some blocks
+latitude: 0.0
+longitude: 0.0
+grid_square: "AA00aa"
+
+# News Ticker (RSS Feeds)
+news_rss_feeds:
+  - "https://feeds.npr.org/1001/rss.xml"      # National
+
+# Refresh Intervals (in minutes unless specified)
+refresh_intervals:
+  clock_ms: 1000          # 1 second refresh
+  weather_min: 10
+  solar_min: 30
+  news_min: 30
+  satellite_min: 5
+
+# Units (Imperial or Metric)
+units: "Imperial"

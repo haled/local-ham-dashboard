@@ -1,0 +1,13 @@
+# Rust
+/target
+Cargo.lock
+
+# Configuration (DO NOT COMMIT YOUR ACTUAL CONFIG)
+config.yaml
+!config.yaml.example
+
+# Logs and temp files
+*.log
+temp_stations.json
+prompt.txt
+SPECIFICATION.md
