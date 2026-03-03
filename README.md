@@ -1,19 +1,22 @@
 # Terminal HamClock
 
-A terminal-based dashboard for amateur radio operators, inspired by the original HamClock but optimized for the CLI using Rust and the Ratatui TUI library.
+A terminal and web-based dashboard for amateur radio operators, inspired by the original HamClock. It's built with Rust and supports both a classic CLI TUI and a modern HTML interface.
 
 ![Terminal HamClock Demo](https://via.placeholder.com/800x400.png?text=Terminal+HamClock+Demo+Placeholder)
 
 ## Features
 
-- **Identity & Time (Block A):** Large FIGlet-styled callsign with a 1-second UTC clock and date.
-- **Local Weather (Block B):** Real-time temperature, humidity, and wind chill for your location via Open-Meteo.
-- **HF Propagation (Block C):** Color-coded status (Green/Yellow/Red) for HF bands from 80m-6m, fetched from HamQSL.
+- **Dual Mode UI:** Choose between a classic terminal-based (Ratatui) dashboard or a modern web-based (HTML/CSS) kiosk display.
+- **Identity & Time (Block A):** Stylized callsign display with a real-time UTC clock and date.
+- **Local Weather (Block B):** Real-time temperature, humidity, and apparent temperature (wind chill) for your location via Open-Meteo.
+- **HF Propagation (Block C):** Color-coded status for HF bands (80m-6m), fetched from HamQSL.
 - **Solar Activity (Block D):** Key indices (SFI, SN, A-Index, K-Index, X-Ray) from HamQSL.
-- **Station Location (Block E):** Your Latitude, Longitude, and a large FIGlet-styled Maidenhead Grid Square.
-- **Satellite Tracker (Block F):** Predicts the next 5 upcoming AMSAT satellite passes (AOS and Max Elevation > 10°).
-- **News Ticker (Block G):** A horizontal scrolling ticker merging local and national headlines from RSS feeds.
-- **World Map (Block H):** A real-time ASCII-based world map showing the current day/night terminator (Gray Line).
+- **Station Location (Block E):** Latitude, Longitude, and a large Maidenhead Grid Square display.
+- **Satellite Tracker (Block F):** Predicts the next 5 upcoming amateur satellite passes (elevation > 10°).
+- **News Ticker (Block G):** A scrolling ticker merging headlines from your favorite RSS feeds with red separators.
+- **World Map (Block H):** 
+  - **TUI:** Real-time ASCII map showing the current day/night terminator (Gray Line).
+  - **Web UI:** Color map with continental imagery and a semi-transparent night shadow.
 
 ## Installation
 
@@ -21,18 +24,48 @@ Ensure you have [Rust and Cargo](https://rustup.rs/) installed.
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/your-username/local-ham-dashboard.git
+   git clone https://github.com/haled/local-ham-dashboard.git
    cd local-ham-dashboard
    ```
 
-2. Build and run the application:
+2. Configuration:
    ```bash
-   cargo run
+   cp config.yaml.example config.yaml
+   # Edit config.yaml with your callsign, lat/lon, and other settings
    ```
+
+3. Build the application:
+   ```bash
+   cargo build --release
+   ```
+
+## Usage
+
+### Run Terminal UI (TUI)
+This is the default mode. Launch it directly from your CLI:
+```bash
+cargo run --release
+```
+
+### Run Web UI (HTML)
+Starts a local web server (default port 3000) that you can open in any browser:
+```bash
+cargo run --release -- --ui html
+```
+To run on a specific port:
+```bash
+cargo run --release -- --ui html --port 8080
+```
+
+### Running in Kiosk Mode (e.g., Raspberry Pi)
+If you're using this as a dedicated display, launch the web UI and use a kiosk-compatible browser:
+```bash
+chromium-browser --kiosk http://localhost:3000
+```
 
 ## Configuration
 
-The application is configured via a `config.yaml` file in the project root. You can customize your callsign, location, and news sources:
+The application is configured via `config.yaml` in the project root:
 
 ```yaml
 # Identity & Contact
@@ -40,14 +73,13 @@ callsign: "YOUR_CALLSIGN"
 user_agent: "TerminalHamClock/0.1.0 (your-email@example.com)"
 
 # Location Information
-latitude: 0.0
-longitude: 0.0
-grid_square: "AA00aa"
+latitude: 38.6270
+longitude: -90.1994
+grid_square: "EM48"
 
 # News Ticker (RSS Feeds)
 news_rss_feeds:
-  - "https://www.ksdk.com/feeds/rss/news/local" # St. Louis Local
-  - "https://feeds.npr.org/1001/rss.xml"      # National
+  - "https://feeds.npr.org/1001/rss.xml"      # National News
 
 # Refresh Intervals (in minutes unless specified)
 refresh_intervals:
@@ -63,7 +95,7 @@ refresh_intervals:
 - **Weather:** [Open-Meteo](https://open-meteo.com/)
 - **Solar/Propagation:** [HamQSL (N0NBH)](https://www.hamqsl.com/solar.html)
 - **Satellite TLEs:** [Celestrak](https://celestrak.org/)
-- **News:** NPR and KSDK (via RSS)
+- **News:** RSS feeds (NPR, etc.)
 
 ## License
 
