@@ -1,6 +1,7 @@
 use color_eyre::Result;
+use serde::Serialize;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct SolarData {
     pub sfi: String,
     pub sn: String,

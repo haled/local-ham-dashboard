@@ -1,8 +1,9 @@
 use color_eyre::Result;
 use chrono::{DateTime, Utc, TimeZone};
 use sgp4::{Elements, Constants};
+use serde::Serialize;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct SatPass {
     pub name: String,
     pub aos: DateTime<Utc>,

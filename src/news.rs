@@ -1,7 +1,8 @@
 use color_eyre::Result;
 use rss::Channel;
+use serde::Serialize;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct NewsData {
     pub headlines: Vec<String>,
 }

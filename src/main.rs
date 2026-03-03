@@ -14,13 +14,38 @@ use ratatui::{
     prelude::*,
     widgets::{Block, Borders, Paragraph, ListItem, List},
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{fs, io, sync::Arc, time::{Duration, Instant}};
 use chrono::Utc;
 use tokio::sync::Mutex;
 use figlet_rs::FIGfont;
+use clap::{Parser, ValueEnum};
+use axum::{
+    routing::get,
+    Json, Router,
+    extract::State,
+};
+use tower_http::services::ServeDir;
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Parser, Debug)]
+#[command(author, version, about, long_about = None)]
+struct Args {
+    /// UI type to display
+    #[arg(short, long, value_enum, default_value_t = UiMode::Tui)]
+    ui: UiMode,
+
+    /// Port for the HTML server
+    #[arg(short, long, default_value_t = 3000)]
+    port: u16,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, ValueEnum, Debug)]
+enum UiMode {
+    Tui,
+    Html,
+}
+
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct Config {
     callsign: String,
     user_agent: String,
@@ -32,7 +57,7 @@ struct Config {
     units: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct RefreshIntervals {
     clock_ms: u64,
     weather_min: u64,
@@ -41,19 +66,23 @@ struct RefreshIntervals {
     satellite_min: u64,
 }
 
+#[derive(Serialize)]
 struct AppState {
     config: Config,
     weather: Option<weather::WeatherData>,
     solar: Option<solar::SolarData>,
     news: Option<news::NewsData>,
     satellites: Option<Vec<satellite::SatPass>>,
+    #[serde(skip)]
     scroll_offset: usize,
+    #[serde(skip)]
     font: Option<FIGfont>,
 }
 
 #[tokio::main]
 async fn main() -> Result<()> {
     color_eyre::install()?;
+    let args = Args::parse();
     let config: Config = serde_yaml::from_str(&fs::read_to_string("config.yaml")?)?;
     let font = FIGfont::standard().ok();
 
@@ -67,10 +96,18 @@ async fn main() -> Result<()> {
         font,
     }));
 
-    enable_raw_mode()?;
-    io::stdout().execute(EnterAlternateScreen)?;
-    let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
+    // Spawn background tasks
+    spawn_background_tasks(Arc::clone(&state), config.clone());
 
+    match args.ui {
+        UiMode::Tui => run_tui(state).await?,
+        UiMode::Html => run_html_server(state, args.port).await?,
+    }
+
+    Ok(())
+}
+
+fn spawn_background_tasks(state: Arc<Mutex<AppState>>, config: Config) {
     let weather_state = Arc::clone(&state);
     let weather_config = config.clone();
     tokio::spawn(async move {
@@ -128,9 +165,18 @@ async fn main() -> Result<()> {
             tokio::time::sleep(Duration::from_secs(sat_config.refresh_intervals.satellite_min * 60)).await;
         }
     });
+}
 
+async fn run_tui(state: Arc<Mutex<AppState>>) -> Result<()> {
+    enable_raw_mode()?;
+    io::stdout().execute(EnterAlternateScreen)?;
+    let mut terminal = Terminal::new(CrosstermBackend::new(io::stdout()))?;
+
+    let tick_rate = {
+        let s = state.lock().await;
+        Duration::from_millis(s.config.refresh_intervals.clock_ms)
+    };
     let mut last_tick = Instant::now();
-    let tick_rate = Duration::from_millis(config.refresh_intervals.clock_ms);
 
     loop {
         let mut app_state = state.lock().await;
@@ -160,6 +206,32 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
+async fn run_html_server(state: Arc<Mutex<AppState>>, port: u16) -> Result<()> {
+    let app = Router::new()
+        .route("/api/data", get(get_data))
+        .fallback_service(ServeDir::new("static"))
+        .with_state(state);
+
+    let addr = std::net::SocketAddr::from(([127, 0, 0, 1], port));
+    println!("Starting HTML server on http://{}", addr);
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    axum::serve(listener, app).await?;
+    Ok(())
+}
+
+async fn get_data(State(state): State<Arc<Mutex<AppState>>>) -> Json<AppState> {
+    let s = state.lock().await;
+    Json(AppState {
+        config: s.config.clone(),
+        weather: s.weather.clone(),
+        solar: s.solar.clone(),
+        news: s.news.clone(),
+        satellites: s.satellites.clone(),
+        scroll_offset: 0,
+        font: None,
+    })
+}
+
 fn ui(f: &mut Frame, state: &AppState) {
     let chunks = Layout::default()
         .direction(Direction::Vertical)
@@ -173,7 +245,7 @@ fn ui(f: &mut Frame, state: &AppState) {
     let top_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage(35), // Widened for Block A and E
+            Constraint::Percentage(35), 
             Constraint::Percentage(21),
             Constraint::Percentage(21),
             Constraint::Percentage(23),
@@ -183,7 +255,7 @@ fn ui(f: &mut Frame, state: &AppState) {
     let middle_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
-            Constraint::Percentage(35), // Widened for Location block
+            Constraint::Percentage(35), 
             Constraint::Percentage(65),
         ])
         .split(chunks[1]);
@@ -191,7 +263,7 @@ fn ui(f: &mut Frame, state: &AppState) {
     let left_middle_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
-            Constraint::Percentage(65), // Increased space for larger Location font
+            Constraint::Percentage(65), 
             Constraint::Percentage(35),
         ])
         .split(middle_chunks[0]);
@@ -261,21 +333,27 @@ fn ui(f: &mut Frame, state: &AppState) {
     );
 
     // Block D: Solar
-    let solar_text = if let Some(s) = &state.solar {
-        format!("SFI: {}\nSN:  {}\nA-Idx: {}\nK-Idx: {}\nX-Ray: {}", s.sfi, s.sn, s.a_index, s.k_index, s.x_ray)
+    let solar_lines = if let Some(s) = &state.solar {
+        vec![
+            Line::from(format!("SFI:  {}", s.sfi)),
+            Line::from(format!("SN:   {}", s.sn)),
+            Line::from(format!("A:    {}", s.a_index)),
+            Line::from(format!("K:    {}", s.k_index)),
+            Line::from(format!("XRay: {}", s.x_ray)),
+        ]
     } else {
-        "Loading...".to_string()
+        vec![Line::from("Loading...")]
     };
     f.render_widget(
-        Paragraph::new(solar_text)
+        Paragraph::new(solar_lines)
             .block(Block::default().borders(Borders::ALL).title(" Solar ").border_style(border_style)),
         top_chunks[3],
     );
 
-    // Block E: Location (Large Grid and Yellow)
+    // Block E: Location 
     let mut loc_lines = Vec::new();
     if let Some(font) = &state.font {
-        loc_lines.push(Line::from(Span::styled("GRID SQUARE:", Style::default().fg(Color::Yellow))));
+        loc_lines.push(Line::from(Span::styled("GRID:", Style::default().fg(Color::Yellow))));
         if let Some(fig) = font.convert(&state.config.grid_square) {
             for line in fig.to_string().lines() {
                 if !line.trim().is_empty() {
@@ -284,8 +362,8 @@ fn ui(f: &mut Frame, state: &AppState) {
             }
         }
     }
-    loc_lines.push(Line::from(Span::styled(format!("LAT: {}", state.config.latitude), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))));
-    loc_lines.push(Line::from(Span::styled(format!("LON: {}", state.config.longitude), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))));
+    loc_lines.push(Line::from(Span::styled(format!("LAT: {:.2}", state.config.latitude), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))));
+    loc_lines.push(Line::from(Span::styled(format!("LON: {:.2}", state.config.longitude), Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD))));
 
     f.render_widget(
         Paragraph::new(loc_lines)
@@ -296,10 +374,13 @@ fn ui(f: &mut Frame, state: &AppState) {
     // Block F: Satellite
     let sat_items: Vec<ListItem> = if let Some(sats) = &state.satellites {
         sats.iter()
-            .map(|s| ListItem::new(format!("{} @ {} (Max: {:.0}°)", s.name, s.aos.format("%H:%M").to_string(), s.max_el)))
+            .map(|s| {
+                let name = if s.name.len() > 10 { &s.name[..10] } else { &s.name };
+                ListItem::new(format!("{} {} ({:.0}°)", name, s.aos.format("%H:%M"), s.max_el))
+            })
             .collect()
     } else {
-        vec![ListItem::new("Calculating Passes...")]
+        vec![ListItem::new("Calculating...")]
     };
     f.render_widget(
         List::new(sat_items)
@@ -310,16 +391,27 @@ fn ui(f: &mut Frame, state: &AppState) {
     render_world_map(f, middle_chunks[1], border_style);
 
     // Block G: News Ticker
-    let news_text = if let Some(n) = &state.news {
-        let combined = n.headlines.join("  |  ");
-        let start = state.scroll_offset % combined.len().max(1);
-        format!("{}  |  {}", &combined[start..], &combined[..start])
+    let news_widget = if let Some(n) = &state.news {
+        let separator = Span::styled(" | ", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD));
+        let mut spans = Vec::new();
+        for (i, headline) in n.headlines.iter().enumerate() {
+            spans.push(Span::raw(headline));
+            if i < n.headlines.len() - 1 {
+                spans.push(separator.clone());
+            }
+        }
+        
+        // Circular shift for "scrolling" effect (simplified for TUI)
+        let combined_len: usize = n.headlines.iter().map(|h| h.len() + 3).sum();
+        let offset = if combined_len > 0 { state.scroll_offset % combined_len } else { 0 };
+        
+        Paragraph::new(Line::from(spans)).scroll((0, offset as u16))
     } else {
-        "News: Loading RSS headlines...".to_string()
+        Paragraph::new("News: Loading RSS headlines...")
     };
+
     f.render_widget(
-        Paragraph::new(news_text)
-            .block(Block::default().borders(Borders::ALL).title(" News Ticker ").border_style(border_style)),
+        news_widget.block(Block::default().borders(Borders::ALL).title(" News Ticker ").border_style(border_style)),
         chunks[2],
     );
 }
@@ -336,9 +428,9 @@ fn render_world_map(f: &mut Frame, area: Rect, border_style: Style) {
             let lon = (x as f64 / width as f64) * 360.0 - 180.0;
             
             if map::is_daylight(lat, lon, now) {
-                canvas[y][x] = '.'; // Day
+                canvas[y][x] = '.'; 
             } else {
-                canvas[y][x] = '█'; // Night
+                canvas[y][x] = '█'; 
             }
         }
     }

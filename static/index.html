@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Terminal HamClock - HTML UI</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="dashboard">
+        <!-- Top Row -->
+        <div class="block identity" id="block-a">
+            <h1 id="callsign">LOADING</h1>
+            <div class="time-date">
+                <div id="clock">00:00:00</div>
+                <div id="date">YYYY-MM-DD</div>
+            </div>
+        </div>
+        <div class="block weather" id="block-b">
+            <h3>Weather</h3>
+            <p>Temp: <span id="temp">--</span></p>
+            <p>Hum: <span id="hum">--</span></p>
+            <p>Chill: <span id="chill">--</span></p>
+        </div>
+        <div class="block propagation" id="block-c">
+            <h3>Propagation</h3>
+            <ul id="prop-list"></ul>
+        </div>
+        <div class="block solar" id="block-d">
+            <h3>Solar</h3>
+            <p>SFI: <span id="sfi">--</span></p>
+            <p>SN: <span id="sn">--</span></p>
+            <p>A-Idx: <span id="a-idx">--</span></p>
+            <p>K-Idx: <span id="k-idx">--</span></p>
+            <p>X-Ray: <span id="x-ray">--</span></p>
+        </div>
+
+        <!-- Middle Row -->
+        <div class="block location" id="block-e">
+            <h3>Location</h3>
+            <div class="grid-square" id="grid-square">------</div>
+            <p>LAT: <span id="lat">--</span></p>
+            <p>LON: <span id="lon">--</span></p>
+        </div>
+        <div class="block world-map" id="block-h">
+            <h3>World Map (Gray Line)</h3>
+            <div class="map-container">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Blue_Marble_2002.png/1024px-Blue_Marble_2002.png" id="map-bg" alt="World Map">
+                <canvas id="map-canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Bottom Left (Under Location) -->
+        <div class="block satellites" id="block-f">
+            <h3>Satellites</h3>
+            <ul id="sat-list"></ul>
+        </div>
+
+        <!-- Bottom News Ticker -->
+        <div class="block news" id="block-g">
+            <div class="ticker-wrap">
+                <div class="ticker" id="ticker-content">
+                    News: Loading RSS headlines...
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
