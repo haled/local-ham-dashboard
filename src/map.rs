@@ -1,30 +1,6 @@
 use chrono::{DateTime, Utc, Timelike, Datelike};
 use std::f64::consts::PI;
 
-pub struct WorldMap {
-    // 180x90 or similar aspect ratio map
-    map_data: Vec<&'static str>,
-}
-
-impl WorldMap {
-    pub fn new() -> Self {
-        // Simple ASCII World Map (Standard 2:1 aspect ratio)
-        let map_data = vec![
-            "                                                                                ",
-            "           . _..::__:  .                         .                      .       ",
-            "         _.___ _ _._ _ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ . ",
-            "        / _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ ",
-            "       / /                                                                      ",
-            "    . / /           . _..::__:  .                         .                     ",
-            "   / / /          _.___ _ _._ _ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ . ",
-            "  / / /          / _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ _.._ ",
-            " / / /          / /                                                             ",
-            "                                                                                ",
-        ];
-        Self { map_data }
-    }
-}
-
 pub fn is_daylight(lat: f64, lon: f64, time: DateTime<Utc>) -> bool {
     let day_of_year = time.ordinal() as f64;
     let hour = time.hour() as f64 + (time.minute() as f64 / 60.0) + (time.second() as f64 / 3600.0);
