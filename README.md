@@ -97,6 +97,10 @@ refresh_intervals:
 - **Satellite TLEs:** [Celestrak](https://celestrak.org/)
 - **News:** RSS feeds (NPR, etc.)
 
+## To Do
+
+- [ ] Create a sidecar utility (CLI or Web-based) to help users easily generate and validate the `config.yaml` file.
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
